@@ -293,41 +293,14 @@ footer{text-align:center;color:var(--muted);font-size:11px;margin-top:28px}
 
 <div id="modal" hidden></div>
 
+<script src="scoring.js"></script>
 <script>
 "use strict";
 /* ==================== DATA ==================== */
-const FACES = {
-  gold:    {emoji:'🪙', label:'זהב'},
-  diamond: {emoji:'💎', label:'יהלום'},
-  monkey:  {emoji:'🐒', label:'קוף'},
-  parrot:  {emoji:'🦜', label:'תוכי'},
-  sword:   {emoji:'⚔️', label:'חרב'},
-  skull:   {emoji:'💀', label:'גולגולת'},
-};
-const FACE_KEYS = Object.keys(FACES);
-
-const CARDS = {
-  none:    {emoji:'🎲', name:'ללא קלף', desc:'משחק רגיל ללא קלף גורל.'},
-  gold:    {emoji:'🪙', name:'מטבע זהב', desc:'מתחילים עם מטבע זהב אחד — שווה 100 נקודות ועוזר לסדרה.'},
-  diamond: {emoji:'💎', name:'יהלום', desc:'מתחילים עם יהלום אחד — שווה 100 נקודות ועוזר לסדרה.'},
-  naval:   {emoji:'⚔️', name:'קרב ימי', desc:'השיגו את מספר החרבות הדרוש לניצחון וקבלו בונוס. כישלון = הפסד נקודות.'},
-  captain: {emoji:'🏴‍☠️', name:'קפטניט', desc:'כל הנקודות בתור זה מוכפלות. באי המתים: מינוס 200 ליריב על כל גולגולת.'},
-  monkey:  {emoji:'🐒', name:'מאנקי ביזנס', desc:'קופים ותוכים נספרים ביחד כסדרה אחת.'},
-  skull:   {emoji:'💀', name:'גולגולת', desc:'מתחילים עם מספר גולגלות מהקלף.'},
-  wizard:  {emoji:'🧙‍♂️', name:'קוסמת', desc:'מחייה גולגולת אחת — היא לא נספרת לפסילה.'},
-  chest:   {emoji:'🧰', name:'תיבת האוצר', desc:'בפסילה — הקוביות המוגנות עדיין נספרות לזכותכם.'},
-  storm:   {emoji:'🌪️', name:'סופה', desc:'רק יהלומים ומטבעות מזכים — 200 נקודות כל אחד.'},
-  truce:   {emoji:'🤝', name:'שביתת נשק', desc:'סיום התור עם חרבות = מינוס 1,000 נקודות על כל חרב.'},
-};
-const SET_TABLE = {3:100,4:200,5:500,6:1000,7:2000,8:4000};
+/* FACES / FACE_KEYS / CARDS / zero / sum / clamp / fmt / setVal and the
+   scoring engine live in scoring.js (loaded above, shared with the tests). */
 const AVATARS = ['🦜','🐒','🪙','💎','⚔️','🏴‍☠️','🧙‍♂️','🐚','⭐','🔱','🦈','🐢','🏝️','👑'];
 const COLORS = ['#ffd166','#f4a261','#06d6a0','#4cc9f0','#f72585','#a78bfa','#7ae582','#ff9770'];
-
-const zero = () => ({gold:0,diamond:0,monkey:0,parrot:0,sword:0,skull:0});
-const sum = o => FACE_KEYS.reduce((a,k)=>a+(o[k]||0),0);
-const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
-const fmt = n => n.toLocaleString('en-US');
-const setVal = n => n<=2 ? 0 : (SET_TABLE[Math.min(n,8)]||4000);
 const $ = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -356,114 +329,6 @@ function defaultEntry(){
     isle:false,
     override:{on:false, value:0},
   };
-}
-
-/* ==================== SCORING ENGINE ==================== */
-function contributingDice(c, cardId){
-  if(cardId==='storm') return c.gold + c.diamond;
-  let n = c.gold + c.diamond;
-  if(cardId==='monkey'){ if(c.monkey+c.parrot>=3) n += c.monkey+c.parrot; }
-  else{ if(c.monkey>=3) n+=c.monkey; if(c.parrot>=3) n+=c.parrot; }
-  if(c.sword>=3) n+=c.sword;
-  return n;
-}
-
-function basePoints(calc, cardId, lines){
-  const setLine = (n,label) => {
-    if(n>=3){ const v=setVal(n); lines.push(`${label} ×${n} → ${v}`); return v; }
-    return 0;
-  };
-  let pts = 0;
-  if(cardId==='storm'){
-    const u = (calc.gold+calc.diamond)*200;
-    if(u) lines.push(`🌪️ זהב+יהלומים ×200: ${u}`);
-    pts += u + setLine(calc.gold,'🪙') + setLine(calc.diamond,'💎');
-  }else{
-    const u = (calc.gold+calc.diamond)*100;
-    if(u) lines.push(`🪙💎 ערך נקוב: ${u}`);
-    pts += u + setLine(calc.gold,'🪙') + setLine(calc.diamond,'💎');
-    if(cardId==='monkey') pts += setLine(calc.monkey+calc.parrot,'🐒🦜 ביחד');
-    else{ pts += setLine(calc.monkey,'🐒'); pts += setLine(calc.parrot,'🦜'); }
-    pts += setLine(calc.sword,'⚔️');
-  }
-  return pts;
-}
-
-function computeEntry(e){
-  const cardId = e.cardId;
-  const counts = e.counts;
-  const calc = {...counts};
-  if(cardId==='gold') calc.gold += 1;
-  if(cardId==='diamond') calc.diamond += 1;
-
-  let skullStart = cardId==='skull' ? e.skullStart : 0;
-  let skulls = calc.skull + skullStart;
-  if(cardId==='wizard') skulls = Math.max(0, skulls-1);
-
-  const lines = [];
-
-  if((cardId==='gold' && counts.gold===8) || (cardId==='diamond' && counts.diamond===8)){
-    lines.push(`👑 8 ${FACES[cardId].label} בקוביות + קלף ${CARDS[cardId].name}`);
-    lines.push('הממציא קבע: ניצחון מיידי!');
-    return {type:'instant-win', score:0, lines};
-  }
-
-  if(e.isle){
-    const skullVal = cardId==='captain' ? 200 : 100;
-    const deduction = skulls * skullVal;
-    let ownPenalty = 0;
-    lines.push(`🏝️ אי המתים — ${skulls} גולגלות שנצברו`);
-    lines.push(`כל יריב מפסיד ${fmt(deduction)} נקודות${cardId==='captain' ? ' (קפטניט ×2)' : ''}`);
-    if(cardId==='truce' && calc.sword > 0){
-      ownPenalty = 1000 * calc.sword;
-      lines.push(`🤝 שביתת נשק באי המתים: השחקן מפסיד ${fmt(ownPenalty)} נקודות`);
-    }
-    return {type:'isle', score:0, ownPenalty, skulls, skullVal, deduction, lines};
-  }
-
-  lines.push(`💀 גולגלות: ${skulls}/3`);
-
-  if(skulls >= 3){
-    if(cardId==='chest' && sum(e.protected) > 0){
-      const p = e.protected;
-      let pts = basePoints(p, cardId, lines);
-      if(contributingDice(p, cardId) === 8){ pts += 500; lines.push('🧰 תיבה מלאה +500'); }
-      if(cardId==='captain'){ pts *= 2; lines.push('🏴‍☠️ קפטניט: x2'); }
-      lines.push('🧰 תיבת האוצר הצילה את התור!');
-      return {type:'chest-save', bust:true, score:pts, lines};
-    }
-    if(cardId==='naval'){
-      lines.push('💀 פסילה! 3+ גולגלות — לא עמדתם במשימה');
-      lines.push(`⚔️ יורדות לכם נקודות הקנס → ${fmt(-e.naval.pen)}`);
-      return {type:'naval-lose', bust:true, score:-e.naval.pen, lines};
-    }
-    lines.push('💀 פסילה! 3+ גולגלות — ללא נקודות');
-    return {type:'bust', score:0, bust:true, lines};
-  }
-
-  let pts = basePoints(calc, cardId, lines);
-  const contrib = contributingDice(counts, cardId);
-  if(contrib === 8){ pts += 500; lines.push('🧰 תיבה מלאה +500'); }
-
-  if(cardId==='truce' && calc.sword > 0){
-    const pen = 1000*calc.sword;
-    lines.push(`🤝 שביתת נשק הופרה: ${calc.sword} חרב${calc.sword>1?'ות':''} → ${fmt(-pen)}`);
-    return {type:'truce', score:-pen, lines};
-  }
-
-  if(cardId==='naval'){
-    if(calc.sword >= e.naval.req){
-      pts += e.naval.bonus;
-      lines.push(`⚔️ ניצחון בקרב ימי +${fmt(e.naval.bonus)}`);
-    }else{
-      lines.push(`⚔️ הפסד בקרב ימי (${calc.sword}/${e.naval.req} חרבות) → ${fmt(-e.naval.pen)}`);
-      return {type:'naval-lose', score:-e.naval.pen, lines};
-    }
-  }
-
-  if(cardId==='captain' && pts !== 0){ pts *= 2; lines.push('🏴‍☠️ קפטניט: x2'); }
-
-  return {type:'ok', score:pts, lines};
 }
 
 /* ==================== SETUP RENDER ==================== */
