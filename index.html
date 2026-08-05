@@ -156,6 +156,10 @@ button{font-family:inherit;color:inherit;border:none;cursor:pointer;background:n
 .preview.isle .pv-score{color:var(--accent)}
 .preview.manual{border-color:var(--gold)}
 .preview.manual .pv-score{color:var(--gold)}
+.preview.neg{border-color:var(--danger)}
+.preview.neg .pv-score{color:var(--danger)}
+.preview.instant-win{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,209,102,.25)}
+.preview.instant-win .pv-score{color:var(--gold)}
 .preview .pv-tag{font-size:11px;font-weight:800;background:var(--panel3);border:1px solid var(--line);padding:1px 8px;border-radius:20px;display:inline-block;margin-bottom:4px}
 
 /* history */
@@ -334,6 +338,7 @@ let state = {
   turnIdx:0,
   round:1,
   finisher:null,
+  immediateWinner:null,
   lastRoundPending:[],
   done:false,
   history:[],
@@ -377,9 +382,9 @@ function basePoints(calc, cardId, lines){
     const u = (calc.gold+calc.diamond)*100;
     if(u) lines.push(`🪙💎 ערך נקוב: ${u}`);
     pts += u + setLine(calc.gold,'🪙') + setLine(calc.diamond,'💎');
-    if(cardId==='monkey') setLine(calc.monkey+calc.parrot,'🐒🦜 ביחד');
-    else{ setLine(calc.monkey,'🐒'); setLine(calc.parrot,'🦜'); }
-    setLine(calc.sword,'⚔️');
+    if(cardId==='monkey') pts += setLine(calc.monkey+calc.parrot,'🐒🦜 ביחד');
+    else{ pts += setLine(calc.monkey,'🐒'); pts += setLine(calc.parrot,'🦜'); }
+    pts += setLine(calc.sword,'⚔️');
   }
   return pts;
 }
@@ -397,12 +402,23 @@ function computeEntry(e){
 
   const lines = [];
 
+  if((cardId==='gold' && counts.gold===8) || (cardId==='diamond' && counts.diamond===8)){
+    lines.push(`👑 8 ${FACES[cardId].label} בקוביות + קלף ${CARDS[cardId].name}`);
+    lines.push('הממציא קבע: ניצחון מיידי!');
+    return {type:'instant-win', score:0, lines};
+  }
+
   if(e.isle){
     const skullVal = cardId==='captain' ? 200 : 100;
     const deduction = skulls * skullVal;
+    let ownPenalty = 0;
     lines.push(`🏝️ אי המתים — ${skulls} גולגלות שנצברו`);
     lines.push(`כל יריב מפסיד ${fmt(deduction)} נקודות${cardId==='captain' ? ' (קפטניט ×2)' : ''}`);
-    return {type:'isle', score:0, skulls, skullVal, deduction, lines};
+    if(cardId==='truce' && calc.sword > 0){
+      ownPenalty = 1000 * calc.sword;
+      lines.push(`🤝 שביתת נשק באי המתים: השחקן מפסיד ${fmt(ownPenalty)} נקודות`);
+    }
+    return {type:'isle', score:0, ownPenalty, skulls, skullVal, deduction, lines};
   }
 
   lines.push(`💀 גולגלות: ${skulls}/3`);
@@ -415,6 +431,11 @@ function computeEntry(e){
       if(cardId==='captain'){ pts *= 2; lines.push('🏴‍☠️ קפטניט: x2'); }
       lines.push('🧰 תיבת האוצר הצילה את התור!');
       return {type:'chest-save', bust:true, score:pts, lines};
+    }
+    if(cardId==='naval'){
+      lines.push('💀 פסילה! 3+ גולגלות — לא עמדתם במשימה');
+      lines.push(`⚔️ יורדות לכם נקודות הקנס → ${fmt(-e.naval.pen)}`);
+      return {type:'naval-lose', bust:true, score:-e.naval.pen, lines};
     }
     lines.push('💀 פסילה! 3+ גולגלות — ללא נקודות');
     return {type:'bust', score:0, bust:true, lines};
@@ -626,12 +647,13 @@ function renderPreview(){
   let score = res.score;
   let cls = res.type;
   if(manual){ score = entry.override.value; cls='manual'; }
+  else if(score < 0){ cls += ' neg'; }
   box.className = 'preview '+cls;
   const pvLines = manual
     ? ['<div>ניקוד שהוזן ידנית</div>']
     : res.lines.map(l=>`<div>${l}</div>`);
   box.innerHTML = `
-    <div class="pv-tag">${manual ? 'ידני' : ({ok:'אוטומטי',bust:'פסילה',isle:'אי המתים','chest-save':'הצלה','naval-lose':'הפסד','truce':'עונש'}[res.type]||'')}</div>
+    <div class="pv-tag">${manual ? 'ידני' : ({ok:'אוטומטי',bust:'פסילה',isle:'אי המתים','chest-save':'הצלה','naval-lose':'הפסד','truce':'עונש','instant-win':'ניצחון מיידי'}[res.type]||'')}</div>
     <div class="pv-score">${fmt(score)}</div>
     <div class="pv-label">נקודות לתור זה</div>
     <div class="pv-lines">${pvLines.join('')}</div>`;
@@ -660,15 +682,23 @@ function renderHistory(){
 
 function showWinner(){
   const m = $('#modal');
-  const ranked = [...state.players].sort((a,b)=>b.score-a.score);
-  const winner = ranked[0];
+  let winner, trophy;
+  if(state.immediateWinner){
+    winner = playerById(state.immediateWinner);
+    trophy = '👑';
+  }else{
+    const ranked = [...state.players].sort((a,b)=>b.score-a.score);
+    winner = ranked[0];
+    trophy = '🏆';
+  }
+  if(!winner) return;
   m.innerHTML = `
     <div class="modal-box">
-      <div class="trophy">🏆</div>
+      <div class="trophy">${trophy}</div>
       <h2>${winner.emoji} ${escapeHtml(winner.name)} מנצח!</h2>
       <div class="winner-score">${fmt(winner.score)} נקודות</div>
       <div class="final-scores">
-        ${ranked.map((p,i)=>`
+        ${[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`
           <div class="${i===0?'first':''}"><span>${p.emoji} ${escapeHtml(p.name)}</span><span>${fmt(p.score)}</span></div>`).join('')}
       </div>
       <button class="btn-primary" data-action="newGame">🔄 משחק חדש</button>
@@ -686,7 +716,7 @@ function loadPersisted(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return false;
     const d = JSON.parse(raw);
-    if(d.state && d.state.players && d.state.players.length){ state = d.state; entry = Object.assign(defaultEntry(), d.entry||{}); return true; }
+    if(d.state && d.state.players && d.state.players.length){ state = d.state; if(!('immediateWinner' in state)) state.immediateWinner = null; entry = Object.assign(defaultEntry(), d.entry||{}); return true; }
   }catch(e){}
   return false;
 }
@@ -736,6 +766,7 @@ function saveTurn(){
           applied.push(`${o.emoji} ${o.name}: ${fmt(-res.deduction)}`);
         }
       });
+      if(res.ownPenalty){ p.score -= res.ownPenalty; applied.push(`${p.emoji} ${p.name}: ${fmt(-res.ownPenalty)} (שביתת נשק)`); }
       lines.push(`☠️ ${res.deduction/skullVal} גולגלות × ${skullVal} הופחתו מכל יריב`);
     }
   }
@@ -749,14 +780,24 @@ function saveTurn(){
   const sc = $('#scoreboard').querySelector(`[data-player="${p.id}"]`);
   if(sc){ const el = sc.querySelector('.p-score'); el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),600); }
 
-  if(!state.finisher && !entry.override.on && score > 0 && p.score >= 8000){
-    state.finisher = p.id;
-    state.lastRoundPending = state.players.filter(x=>x.id!==p.id).map(x=>x.id);
-  }else if(state.finisher != null && state.lastRoundPending.includes(p.id)){
-    state.lastRoundPending = state.lastRoundPending.filter(id=>id!==p.id);
+  if(res.type === 'instant-win'){
+    state.immediateWinner = p.id;
+    state.finisher = null;
+    state.lastRoundPending = [];
+    state.done = true;
+  }else{
+    if(state.finisher && playerById(state.finisher).score < 8000){
+      state.finisher = null;
+      state.lastRoundPending = [];
+    }
+    if(!state.finisher && !entry.override.on && score > 0 && p.score >= 8000){
+      state.finisher = p.id;
+      state.lastRoundPending = state.players.filter(x=>x.id!==p.id).map(x=>x.id);
+    }else if(state.finisher != null && state.lastRoundPending.includes(p.id)){
+      state.lastRoundPending = state.lastRoundPending.filter(id=>id!==p.id);
+    }
+    advance();
   }
-
-  advance();
   entry = defaultEntry();
   persist();
   render();
@@ -785,7 +826,7 @@ function undo(){
 
 function newGame(){
   if(state.history.length && !confirm('להתחיל משחק חדש? כל הניקוד יימחק.')) return;
-  state = {screen:'setup', players:[], turnIdx:0, round:1, finisher:null, lastRoundPending:[], done:false, history:[]};
+  state = {screen:'setup', players:[], turnIdx:0, round:1, finisher:null, immediateWinner:null, lastRoundPending:[], done:false, history:[]};
   entry = defaultEntry();
   past = [];
   localStorage.removeItem(STORAGE_KEY);
