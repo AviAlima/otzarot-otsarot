@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1b2d">
+<title>אוצרות או צרות — ניהול ניקוד</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1b2d;
+  --panel:#17263c;
+  --panel2:#1e3250;
+  --panel3:#24395b;
+  --gold:#ffd166;
+  --accent:#f4a261;
+  --text:#eef2f7;
+  --muted:#93a4bd;
+  --danger:#ef476f;
+  --ok:#06d6a0;
+  --line:#2c3f61;
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:radial-gradient(1100px 700px at 50% -8%, #22406b 0%, #0f1b2d 62%);
+  color:var(--text);
+  font-family:'Heebo',system-ui,-apple-system,sans-serif;
+  min-height:100vh;
+  line-height:1.5;
+}
+#app{max-width:560px;margin:0 auto;padding:16px 14px 80px}
+h1.app-title{font-size:26px;font-weight:800;text-align:center;letter-spacing:.5px}
+h1.app-title .gold{color:var(--gold)}
+.subtitle{text-align:center;color:var(--muted);font-size:14px;margin-top:2px}
+.screen{display:block}
+.screen[hidden]{display:none}
+
+/* ---------- panels ---------- */
+.panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.section-label{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.4px;margin:16px 0 8px;display:flex;align-items:center;gap:6px}
+.section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ---------- buttons ---------- */
+button{font-family:inherit;color:inherit;border:none;cursor:pointer;background:none;font-size:inherit}
+.btn-primary{
+  display:block;width:100%;padding:16px;font-size:18px;font-weight:800;
+  background:linear-gradient(135deg,#ffd166,#f4a261);color:#221c08;border-radius:14px;
+  margin-top:18px;box-shadow:0 6px 18px rgba(255,209,102,.25);transition:transform .08s ease;
+}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:var(--panel3);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:700}
+.btn-ghost:active{transform:scale(.96)}
+.icon-btn{background:var(--panel3);border:1px solid var(--line);border-radius:10px;width:38px;height:38px;font-size:18px;display:flex;align-items:center;justify-content:center}
+
+/* ---------- setup ---------- */
+.count-row{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px}
+.count-row .lbl{color:var(--muted);font-size:14px}
+.count-btn{width:46px;height:46px;border-radius:12px;background:var(--panel3);border:1px solid var(--line);font-size:24px;font-weight:800}
+.count-num{font-size:28px;font-weight:800;min-width:40px;text-align:center;color:var(--gold)}
+.setup-player{
+  display:flex;align-items:center;gap:12px;margin-top:12px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;
+}
+.setup-player .avatar{font-size:26px;width:46px;height:46px;border-radius:12px;background:var(--panel3);display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
+.setup-player input[type=text]{
+  flex:1;background:transparent;border:none;border-bottom:2px solid var(--line);
+  color:var(--text);font-family:inherit;font-size:17px;font-weight:700;padding:6px 2px;outline:none;min-width:0;
+}
+.setup-player input[type=text]:focus{border-bottom-color:var(--gold)}
+.setup-player input[type=text]::placeholder{color:var(--muted);font-weight:400}
+.order-hint{color:var(--muted);font-size:12.5px;margin-top:12px;text-align:center}
+
+/* ---------- scoreboard ---------- */
+#banner{
+  margin-top:12px;padding:12px 14px;border-radius:14px;font-weight:700;text-align:center;
+  background:linear-gradient(135deg,rgba(255,209,102,.18),rgba(244,162,97,.12));
+  border:1px solid rgba(255,209,102,.45);color:var(--gold);font-size:15px;
+}
+.scoreboard{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.scoreboard.cols-2{grid-template-columns:repeat(2,1fr)}
+.scoreboard.cols-3{grid-template-columns:repeat(3,1fr)}
+.pcard{
+  background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:10px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;position:relative;
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.pcard .p-avatar{font-size:24px;line-height:1}
+.pcard .p-name{font-size:12.5px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcard .p-score{font-size:19px;font-weight:800}
+.pcard .p-sub{font-size:9.5px;color:var(--muted)}
+.pcard.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,162,97,.25),0 6px 18px rgba(0,0,0,.3);transform:translateY(-2px)}
+.pcard.active::after{content:"בתור";position:absolute;top:-8px;font-size:10px;font-weight:800;background:var(--accent);color:#221c08;padding:1px 8px;border-radius:20px}
+.pcard .finish-badge{position:absolute;top:-8px;left:-8px;font-size:15px}
+.pcard.bump .p-score{animation:bump .5s ease}
+@keyframes bump{0%{transform:scale(1)}35%{transform:scale(1.35);color:var(--gold)}100%{transform:scale(1)}}
+
+/* ---------- turn panel ---------- */
+.turn-head{display:flex;align-items:center;gap:12px}
+.turn-head .avatar{font-size:32px;width:58px;height:58px;border-radius:16px;background:var(--panel3);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.turn-title{font-size:19px;font-weight:800}
+.turn-sub{color:var(--muted);font-size:13px}
+.card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fate-card{
+  display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;
+  background:var(--panel);border:2px solid var(--line);border-radius:12px;font-size:12px;font-weight:700;
+  transition:border-color .1s ease,transform .08s ease;
+}
+.fate-card .fc-emoji{font-size:24px}
+.fate-card:active{transform:scale(.95)}
+.fate-card.selected{border-color:var(--gold);background:rgba(255,209,102,.12)}
+.card-opts{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:10px;margin-top:10px;font-size:13px}
+.card-desc{color:var(--muted);font-size:12.5px;margin-top:6px}
+
+/* steppers */
+.opt-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.opt-row:first-child{margin-top:0}
+.opt-lbl{color:var(--muted);font-size:13px}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:34px;height:34px;border-radius:9px;background:var(--panel3);border:1px solid var(--line);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.stepper button:active{transform:scale(.92)}
+.stepper .val{min-width:34px;text-align:center;font-weight:800;font-size:16px}
+
+/* dice grid */
+.dice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dice-cell{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.dice-cell .d-emoji{font-size:30px;line-height:1}
+.dice-cell .d-label{font-size:11.5px;font-weight:700;color:var(--muted)}
+.dice-total{text-align:center;color:var(--muted);font-size:12.5px;margin-top:8px}
+.dice-total.warn{color:var(--danger)}
+.protected-note{font-size:12px;color:var(--ok);margin-top:6px;text-align:center;font-weight:600}
+
+/* toggle row (isle / override) */
+.toggle-row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin-top:10px;cursor:pointer}
+.toggle-row input{width:20px;height:20px;accent-color:var(--gold);cursor:pointer}
+.toggle-row .t-label{font-weight:700;font-size:14px;flex:1}
+.toggle-row .t-hint{color:var(--muted);font-size:11.5px}
+
+/* preview */
+.preview{
+  margin-top:14px;border-radius:14px;padding:14px;text-align:center;
+  background:var(--panel);border:2px solid var(--line);
+}
+.preview .pv-score{font-size:34px;font-weight:800}
+.preview .pv-label{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.3px}
+.preview .pv-lines{margin-top:8px;display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--text);text-align:right}
+.preview.ok{border-color:var(--ok)}
+.preview.ok .pv-score{color:var(--ok)}
+.preview.bust{border-color:var(--danger)}
+.preview.bust .pv-score{color:var(--danger)}
+.preview.isle{border-color:var(--accent)}
+.preview.isle .pv-score{color:var(--accent)}
+.preview.manual{border-color:var(--gold)}
+.preview.manual .pv-score{color:var(--gold)}
+.preview .pv-tag{font-size:11px;font-weight:800;background:var(--panel3);border:1px solid var(--line);padding:1px 8px;border-radius:20px;display:inline-block;margin-bottom:4px}
+
+/* history */
+.history-item{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px;
+}
+.history-item summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.history-item summary::-webkit-details-marker{display:none}
+.hist-score{margin-right:auto;font-weight:800;font-size:16px}
+.hist-score.pos{color:var(--ok)}
+.hist-score.neg{color:var(--danger)}
+.hist-score.zero{color:var(--muted)}
+.hist-detail{font-size:13px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:3px}
+
+/* topbar */
+.topbar{display:flex;align-items:center;gap:10px;margin-top:4px}
+.topbar h1{flex:1;font-size:20px}
+.topbar .btn-group{display:flex;gap:6px}
+
+/* rules */
+details.rules{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:14px;overflow:hidden}
+details.rules summary{cursor:pointer;padding:12px 14px;font-weight:800;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.rules summary::after{content:"▾";color:var(--muted)}
+details.rules[open] summary::after{content:"▴"}
+.rules-body{padding:0 14px 14px;font-size:13px;color:var(--muted)}
+.rules-body h4{color:var(--text);margin:10px 0 4px}
+.rules-body table{width:100%;border-collapse:collapse;margin:6px 0}
+.rules-body td,.rules-body th{border:1px solid var(--line);padding:5px 8px;text-align:center}
+.rules-body .card-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.rules-body .card-list div{display:flex;gap:8px}
+.rules-body .card-list b{color:var(--gold)}
+
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(6,12,22,.85);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+#modal[hidden]{display:none}
+.modal-box{
+  background:linear-gradient(180deg,#1e3250,#142136);border:2px solid var(--gold);border-radius:20px;
+  padding:28px 22px;text-align:center;max-width:360px;width:100%;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);animation:pop .3s ease;
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-box .trophy{font-size:56px}
+.modal-box h2{font-size:24px;margin-top:6px}
+.modal-box .winner-score{color:var(--gold);font-size:18px;font-weight:800;margin-top:4px}
+.modal-box .final-scores{margin:16px 0;display:flex;flex-direction:column;gap:6px}
+.modal-box .final-scores div{display:flex;justify-content:space-between;background:var(--panel3);border-radius:10px;padding:8px 12px;font-weight:700}
+.modal-box .final-scores .first{color:var(--gold)}
+footer{text-align:center;color:var(--muted);font-size:11px;margin-top:28px}
+@media (max-width:420px){
+  .card-grid{grid-template-columns:repeat(4,1fr)}
+  .fate-card{font-size:11px;padding:8px 2px}
+  .fate-card .fc-emoji{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== SETUP ===================== -->
+  <section id="setup" class="screen">
+    <h1 class="app-title"><span class="gold">💎 אוצרות או צרות</span></h1>
+    <p class="subtitle">מנהל הניקוד של המשחק</p>
+
+    <div class="panel">
+      <div class="section-label" style="margin-top:0">מספר שחקנים</div>
+      <div class="count-row">
+        <button class="count-btn" data-action="setPlayers" data-delta="-1">−</button>
+        <span class="count-num" id="countNum">2</span>
+        <button class="count-btn" data-action="setPlayers" data-delta="1">+</button>
+      </div>
+      <div id="setupPlayers"></div>
+      <p class="order-hint">השחקן הראשון ברשימה משחק ראשון. לסיבוב הבא הקישו על האימוג'י כדי להחליף אותו.</p>
+      <button class="btn-primary" data-action="startGame">🚢 בואו נשחק!</button>
+    </div>
+
+    <details class="rules">
+      <summary>📜 חוקי ניקוד קצרים</summary>
+      <div class="rules-body">
+        <h4>סדרות (3+ עצמים זהים)</h4>
+        <table>
+          <tr><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+          <tr><td>100</td><td>200</td><td>500</td><td>1,000</td><td>2,000</td><td>4,000</td></tr>
+        </table>
+        <h4>כללים</h4>
+        <div>
+          🪙💎 כל יהלום ומטבע זהב שווים <b>100</b> נקודות, בנוסף לערך הסדרה שלהם.<br>
+          🧰 תיבה מלאה: ניקוד מכל 8 הקוביות = <b>+500</b>.<br>
+          💀 3 גולגלות ומעלה = פסילה (0 נקודות). 4+ בהטלה הראשונה = 🏝️ אי המתים.<br>
+          🏁 ניצחון: לחצות 8,000 נקודות, וכל שאר השחקנים מקבלים תור אחרון.
+        </div>
+        <h4>קלפי גורל</h4>
+        <div class="card-list">
+          <div><span>🪙</span><b>מטבע זהב</b><span>מתחילים עם מטבע זהב.</span></div>
+          <div><span>💎</span><b>יהלום</b><span>מתחילים עם יהלום.</span></div>
+          <div><span>⚔️</span><b>קרב ימי</b><span>חרבות לניצחון → בונוס. כישלון → הפסד.</span></div>
+          <div><span>🏴‍☠️</span><b>קפטניט</b><span>כל הנקודות מוכפלות.</span></div>
+          <div><span>🐒</span><b>מאנקי ביזנס</b><span>קופים ותוכים נספרים ביחד.</span></div>
+          <div><span>💀</span><b>גולגולת</b><span>מתחילים עם גולגלות.</span></div>
+          <div><span>🧙‍♂️</span><b>קוסמת</b><span>מחייה גולגולת אחת.</span></div>
+          <div><span>🧰</span><b>תיבת האוצר</b><span>מגנה על קוביות בפסילה.</span></div>
+          <div><span>🌪️</span><b>סופה</b><span>רק זהב ויהלומים, 200 כל אחד.</span></div>
+          <div><span>🤝</span><b>שביתת נשק</b><span>חרב בסוף = מינוס 1,000.</span></div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===================== GAME ===================== -->
+  <section id="game" class="screen" hidden>
+    <div class="topbar">
+      <h1 class="app-title"><span class="gold">💎 אוצרות או צרות</span></h1>
+      <div class="btn-group">
+        <button class="icon-btn" data-action="undo" title="בטל תור אחרון">↩️</button>
+        <button class="icon-btn" data-action="rulesToggle" title="חוקים">📜</button>
+        <button class="icon-btn" data-action="newGame" title="משחק חדש">🔄</button>
+      </div>
+    </div>
+    <div id="banner" hidden></div>
+    <div id="scoreboard"></div>
+
+    <div class="panel" id="turnPanel"></div>
+
+    <div class="panel" id="historyPanel">
+      <div class="section-label" style="margin-top:0">📋 היסטוריית תורות</div>
+      <div id="historyList"></div>
+    </div>
+  </section>
+
+  <footer>נבנה בשביל המשחק אוצרות או צרות · שיחקתם בהנאה!</footer>
+</div>
+
+<div id="modal" hidden></div>
+
+<script>
+"use strict";
+/* ==================== DATA ==================== */
+const FACES = {
+  gold:    {emoji:'🪙', label:'זהב'},
+  diamond: {emoji:'💎', label:'יהלום'},
+  monkey:  {emoji:'🐒', label:'קוף'},
+  parrot:  {emoji:'🦜', label:'תוכי'},
+  sword:   {emoji:'⚔️', label:'חרב'},
+  skull:   {emoji:'💀', label:'גולגולת'},
+};
+const FACE_KEYS = Object.keys(FACES);
+
+const CARDS = {
+  none:    {emoji:'🎲', name:'ללא קלף', desc:'משחק רגיל ללא קלף גורל.'},
+  gold:    {emoji:'🪙', name:'מטבע זהב', desc:'מתחילים עם מטבע זהב אחד — שווה 100 נקודות ועוזר לסדרה.'},
+  diamond: {emoji:'💎', name:'יהלום', desc:'מתחילים עם יהלום אחד — שווה 100 נקודות ועוזר לסדרה.'},
+  naval:   {emoji:'⚔️', name:'קרב ימי', desc:'השיגו את מספר החרבות הדרוש לניצחון וקבלו בונוס. כישלון = הפסד נקודות.'},
+  captain: {emoji:'🏴‍☠️', name:'קפטניט', desc:'כל הנקודות בתור זה מוכפלות. באי המתים: מינוס 200 ליריב על כל גולגולת.'},
+  monkey:  {emoji:'🐒', name:'מאנקי ביזנס', desc:'קופים ותוכים נספרים ביחד כסדרה אחת.'},
+  skull:   {emoji:'💀', name:'גולגולת', desc:'מתחילים עם מספר גולגלות מהקלף.'},
+  wizard:  {emoji:'🧙‍♂️', name:'קוסמת', desc:'מחייה גולגולת אחת — היא לא נספרת לפסילה.'},
+  chest:   {emoji:'🧰', name:'תיבת האוצר', desc:'בפסילה — הקוביות המוגנות עדיין נספרות לזכותכם.'},
+  storm:   {emoji:'🌪️', name:'סופה', desc:'רק יהלומים ומטבעות מזכים — 200 נקודות כל אחד.'},
+  truce:   {emoji:'🤝', name:'שביתת נשק', desc:'סיום התור עם חרבות = מינוס 1,000 נקודות על כל חרב.'},
+};
+const SET_TABLE = {3:100,4:200,5:500,6:1000,7:2000,8:4000};
+const AVATARS = ['🦜','🐒','🪙','💎','⚔️','🏴‍☠️','🧙‍♂️','🐚','⭐','🔱','🦈','🐢','🏝️','👑'];
+const COLORS = ['#ffd166','#f4a261','#06d6a0','#4cc9f0','#f72585','#a78bfa','#7ae582','#ff9770'];
+
+const zero = () => ({gold:0,diamond:0,monkey:0,parrot:0,sword:0,skull:0});
+const sum = o => FACE_KEYS.reduce((a,k)=>a+(o[k]||0),0);
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const fmt = n => n.toLocaleString('en-US');
+const setVal = n => n<=2 ? 0 : (SET_TABLE[Math.min(n,8)]||4000);
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2,9);
+
+/* ==================== STATE ==================== */
+let state = {
+  screen:'setup',
+  players:[],
+  turnIdx:0,
+  round:1,
+  finisher:null,
+  lastRoundPending:[],
+  done:false,
+  history:[],
+};
+let past = [];
+let entry = defaultEntry();
+
+function defaultEntry(){
+  return {
+    cardId:'none',
+    counts:zero(),
+    protected:zero(),
+    naval:{req:4, bonus:500, pen:250},
+    skullStart:1,
+    isle:false,
+    override:{on:false, value:0},
+  };
+}
+
+/* ==================== SCORING ENGINE ==================== */
+function contributingDice(c, cardId){
+  if(cardId==='storm') return c.gold + c.diamond;
+  let n = c.gold + c.diamond;
+  if(cardId==='monkey'){ if(c.monkey+c.parrot>=3) n += c.monkey+c.parrot; }
+  else{ if(c.monkey>=3) n+=c.monkey; if(c.parrot>=3) n+=c.parrot; }
+  if(c.sword>=3) n+=c.sword;
+  return n;
+}
+
+function basePoints(calc, cardId, lines){
+  const setLine = (n,label) => {
+    if(n>=3){ const v=setVal(n); lines.push(`${label} ×${n} → ${v}`); return v; }
+    return 0;
+  };
+  let pts = 0;
+  if(cardId==='storm'){
+    const u = (calc.gold+calc.diamond)*200;
+    if(u) lines.push(`🌪️ זהב+יהלומים ×200: ${u}`);
+    pts += u + setLine(calc.gold,'🪙') + setLine(calc.diamond,'💎');
+  }else{
+    const u = (calc.gold+calc.diamond)*100;
+    if(u) lines.push(`🪙💎 ערך נקוב: ${u}`);
+    pts += u + setLine(calc.gold,'🪙') + setLine(calc.diamond,'💎');
+    if(cardId==='monkey') setLine(calc.monkey+calc.parrot,'🐒🦜 ביחד');
+    else{ setLine(calc.monkey,'🐒'); setLine(calc.parrot,'🦜'); }
+    setLine(calc.sword,'⚔️');
+  }
+  return pts;
+}
+
+function computeEntry(e){
+  const cardId = e.cardId;
+  const counts = e.counts;
+  const calc = {...counts};
+  if(cardId==='gold') calc.gold += 1;
+  if(cardId==='diamond') calc.diamond += 1;
+
+  let skullStart = cardId==='skull' ? e.skullStart : 0;
+  let skulls = calc.skull + skullStart;
+  if(cardId==='wizard') skulls = Math.max(0, skulls-1);
+
+  const lines = [];
+
+  if(e.isle){
+    const skullVal = cardId==='captain' ? 200 : 100;
+    const deduction = skulls * skullVal;
+    lines.push(`🏝️ אי המתים — ${skulls} גולגלות שנצברו`);
+    lines.push(`כל יריב מפסיד ${fmt(deduction)} נקודות${cardId==='captain' ? ' (קפטניט ×2)' : ''}`);
+    return {type:'isle', score:0, skulls, skullVal, deduction, lines};
+  }
+
+  lines.push(`💀 גולגלות: ${skulls}/3`);
+
+  if(skulls >= 3){
+    if(cardId==='chest' && sum(e.protected) > 0){
+      const p = e.protected;
+      let pts = basePoints(p, cardId, lines);
+      if(contributingDice(p, cardId) === 8){ pts += 500; lines.push('🧰 תיבה מלאה +500'); }
+      if(cardId==='captain'){ pts *= 2; lines.push('🏴‍☠️ קפטניט: x2'); }
+      lines.push('🧰 תיבת האוצר הצילה את התור!');
+      return {type:'chest-save', bust:true, score:pts, lines};
+    }
+    lines.push('💀 פסילה! 3+ גולגלות — ללא נקודות');
+    return {type:'bust', score:0, bust:true, lines};
+  }
+
+  let pts = basePoints(calc, cardId, lines);
+  const contrib = contributingDice(counts, cardId);
+  if(contrib === 8){ pts += 500; lines.push('🧰 תיבה מלאה +500'); }
+
+  if(cardId==='truce' && calc.sword > 0){
+    const pen = 1000*calc.sword;
+    lines.push(`🤝 שביתת נשק הופרה: ${calc.sword} חרב${calc.sword>1?'ות':''} → ${fmt(-pen)}`);
+    return {type:'truce', score:-pen, lines};
+  }
+
+  if(cardId==='naval'){
+    if(calc.sword >= e.naval.req){
+      pts += e.naval.bonus;
+      lines.push(`⚔️ ניצחון בקרב ימי +${fmt(e.naval.bonus)}`);
+    }else{
+      lines.push(`⚔️ הפסד בקרב ימי (${calc.sword}/${e.naval.req} חרבות) → ${fmt(-e.naval.pen)}`);
+      return {type:'naval-lose', score:-e.naval.pen, lines};
+    }
+  }
+
+  if(cardId==='captain' && pts !== 0){ pts *= 2; lines.push('🏴‍☠️ קפטניט: x2'); }
+
+  return {type:'ok', score:pts, lines};
+}
+
+/* ==================== SETUP RENDER ==================== */
+function renderSetup(){
+  const n = state.players.length;
+  $('#countNum').textContent = n;
+  $('#setupPlayers').innerHTML = state.players.map(p => `
+    <div class="setup-player">
+      <button class="avatar" data-action="cycleAvatar" data-id="${p.id}" title="החלף אימוג'י">${p.emoji}</button>
+      <input type="text" data-name-input="${p.id}" value="${escapeAttr(p.name)}" maxlength="14" placeholder="שם השחקן">
+    </div>`).join('');
+}
+
+/* ==================== GAME RENDER ==================== */
+function renderGame(){
+  $('#banner').hidden = !(state.finisher && !state.done);
+  if(state.finisher && !state.done){
+    const f = playerById(state.finisher);
+    $('#banner').textContent = `🏁 ${f.name} חצה את 8,000! כל השחקנים האחרים מקבלים תור אחד אחרון`;
+  }
+  renderScoreboard();
+  renderTurnPanel();
+  renderHistory();
+}
+
+function renderScoreboard(){
+  const sb = $('#scoreboard');
+  sb.className = 'scoreboard ' + (state.players.length<=3 ? 'cols-'+state.players.length : '');
+  sb.innerHTML = state.players.map(p => {
+    const active = !state.done && p.id === state.players[state.turnIdx].id;
+    return `
+    <div class="pcard ${active?'active':''}" data-player="${p.id}" style="border-color:${p.color}">
+      ${p.id===state.finisher ? '<span class="finish-badge">🏁</span>' : ''}
+      <div class="p-avatar">${p.emoji}</div>
+      <div class="p-name">${escapeHtml(p.name)}</div>
+      <div class="p-score">${fmt(p.score)}</div>
+      <div class="p-sub">${state.done ? '' : (active ? 'משחק כעת' : '')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTurnPanel(){
+  const tp = $('#turnPanel');
+  if(state.done){ tp.innerHTML = '<div style="text-align:center;padding:10px">🏁 המשחק הסתיים</div>'; return; }
+  const p = state.players[state.turnIdx];
+  const turnNum = state.history.length + 1;
+
+  const cardButtons = Object.entries(CARDS).map(([id,c]) => `
+    <button class="fate-card ${entry.cardId===id?'selected':''}" data-action="pickCard" data-card="${id}">
+      <span class="fc-emoji">${c.emoji}</span><span>${c.name}</span>
+    </button>`).join('');
+
+  tp.innerHTML = `
+    <div class="turn-head">
+      <div class="avatar">${p.emoji}</div>
+      <div>
+        <div class="turn-title">התור של ${escapeHtml(p.name)}</div>
+        <div class="turn-sub">סיבוב ${state.round} · תור ${turnNum} · סך ${fmt(p.score)} נקודות</div>
+      </div>
+    </div>
+
+    <div class="section-label">🎴 קלף גורל</div>
+    <div class="card-grid">${cardButtons}</div>
+    <div class="card-desc" id="cardDesc">${CARDS[entry.cardId].desc}</div>
+
+    <div id="cardOpts"></div>
+
+    <div class="section-label">🎲 הקוביות (בסוף התור)</div>
+    <div class="dice-grid">
+      ${FACE_KEYS.map(k => `
+        <div class="dice-cell">
+          <span class="d-emoji">${FACES[k].emoji}</span>
+          <span class="d-label">${FACES[k].label}</span>
+          <div class="stepper">
+            <button data-action="step" data-target="counts.${k}" data-delta="-1">−</button>
+            <span class="val">${entry.counts[k]}</span>
+            <button data-action="step" data-target="counts.${k}" data-delta="1">+</button>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="dice-total ${sum(entry.counts)===8?'':'warn'}" id="diceTotal">נרשמו ${sum(entry.counts)} מתוך 8 קוביות</div>
+
+    <div id="protectedWrap"></div>
+    <div id="isleWrap"></div>
+    <div id="overrideWrap"></div>
+
+    <div class="preview" id="preview"></div>
+    <button class="btn-primary" data-action="saveTurn">✅ סיום התור ושמירת ניקוד</button>
+  `;
+
+  renderCardOpts();
+  renderProtected();
+  renderIsle();
+  renderOverride();
+  renderPreview();
+}
+
+function renderCardOpts(){
+  const box = $('#cardOpts');
+  const cardId = entry.cardId;
+  const row = (label, target, val, step=1, min=0, max=20000) => `
+    <div class="opt-row">
+      <span class="opt-lbl">${label}</span>
+      <div class="stepper">
+        <button data-action="step" data-target="${target}" data-delta="${-step}">−</button>
+        <span class="val">${fmt(val)}</span>
+        <button data-action="step" data-target="${target}" data-delta="${step}">+</button>
+      </div>
+    </div>`;
+  if(cardId==='naval'){
+    box.innerHTML = `<div class="card-opts">
+      ${row('חרבות דרושות לניצחון','naval.req',entry.naval.req,1,1,8)}
+      ${row('בונוס ניצחון','naval.bonus',entry.naval.bonus,50,0,20000)}
+      ${row('קנס כישלון','naval.pen',entry.naval.pen,50,0,20000)}
+    </div>`;
+  }else if(cardId==='skull'){
+    box.innerHTML = `<div class="card-opts">
+      ${row('גולגלות התחלתיות מהקלף','skullStart',entry.skullStart,1,0,3)}
+    </div>`;
+  }else{
+    box.innerHTML = '';
+  }
+}
+
+function renderProtected(){
+  const wrap = $('#protectedWrap');
+  if(entry.cardId !== 'chest'){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = `
+    <div class="section-label">🧰 קוביות מוגנות בתיבה</div>
+    <div class="dice-grid">
+      ${FACE_KEYS.map(k => `
+        <div class="dice-cell">
+          <span class="d-emoji">${FACES[k].emoji}</span>
+          <span class="d-label">${FACES[k].label}</span>
+          <div class="stepper">
+            <button data-action="step" data-target="protected.${k}" data-delta="-1">−</button>
+            <span class="val">${entry.protected[k]}</span>
+            <button data-action="step" data-target="protected.${k}" data-delta="1">+</button>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="protected-note">בפסילה, רק הקוביות בתיבה ייספרו לזכותכם.</div>`;
+}
+
+function renderIsle(){
+  const wrap = $('#isleWrap');
+  if(entry.cardId==='naval'){ entry.isle=false; wrap.innerHTML=''; return; }
+  wrap.innerHTML = `
+    <label class="toggle-row">
+      <input type="checkbox" data-action="toggleIsle" ${entry.isle?'checked':''}>
+      <span class="t-label">🏝️ אי המתים</span>
+      <span class="t-hint">4+ גולגלות בהטלה הראשונה בלבד</span>
+    </label>`;
+}
+
+function renderOverride(){
+  const wrap = $('#overrideWrap');
+  wrap.innerHTML = `
+    <label class="toggle-row">
+      <input type="checkbox" data-action="toggleOverride" ${entry.override.on?'checked':''}>
+      <span class="t-label">✏️ הזנה ידנית של הניקוד</span>
+      <span class="t-hint">עוקף את החישוב האוטומטי</span>
+    </label>
+    ${entry.override.on ? `
+    <div class="opt-row" style="margin-top:10px">
+      <span class="opt-lbl">ניקוד ידני</span>
+      <div class="stepper">
+        <button data-action="step" data-target="override.value" data-delta="-100">−100</button>
+        <input type="number" id="overrideValue" value="${entry.override.value}" style="width:90px;text-align:center;background:var(--panel3);border:1px solid var(--line);border-radius:9px;padding:7px 4px;color:var(--text);font-family:inherit;font-size:16px;font-weight:800">
+        <button data-action="step" data-target="override.value" data-delta="100">+100</button>
+      </div>
+    </div>` : ''}`;
+  const ov = $('#overrideValue');
+  if(ov){ ov.onchange = () => { entry.override.value = parseInt(ov.value,10)||0; renderPreview(); }; }
+}
+
+function renderPreview(){
+  const box = $('#preview');
+  const res = computeEntry(entry);
+  const manual = entry.override.on;
+  let score = res.score;
+  let cls = res.type;
+  if(manual){ score = entry.override.value; cls='manual'; }
+  box.className = 'preview '+cls;
+  const pvLines = manual
+    ? ['<div>ניקוד שהוזן ידנית</div>']
+    : res.lines.map(l=>`<div>${l}</div>`);
+  box.innerHTML = `
+    <div class="pv-tag">${manual ? 'ידני' : ({ok:'אוטומטי',bust:'פסילה',isle:'אי המתים','chest-save':'הצלה','naval-lose':'הפסד','truce':'עונש'}[res.type]||'')}</div>
+    <div class="pv-score">${fmt(score)}</div>
+    <div class="pv-label">נקודות לתור זה</div>
+    <div class="pv-lines">${pvLines.join('')}</div>`;
+}
+
+function renderHistory(){
+  const list = $('#historyList');
+  if(!state.history.length){ list.innerHTML='<div style="color:var(--muted);font-size:13px">עדיין אין תורות שנרשמו.</div>'; return; }
+  list.innerHTML = state.history.map(h => {
+    const p = playerById(h.playerId);
+    const cls = h.score>0?'pos':(h.score<0?'neg':'zero');
+    return `
+    <details class="history-item">
+      <summary>
+        <span>${p.emoji}</span>
+        <span>${escapeHtml(p.name)} · ${CARDS[h.cardId].name}</span>
+        <span class="hist-score ${cls}">${fmt(h.score)}</span>
+      </summary>
+      <div class="hist-detail">
+        ${h.lines.map(l=>`<div>${l}</div>`).join('')}
+        ${h.applied && h.applied.length ? h.applied.map(a=>`<div>${a}</div>`).join('') : ''}
+      </div>
+    </details>`;
+  }).join('');
+}
+
+function showWinner(){
+  const m = $('#modal');
+  const ranked = [...state.players].sort((a,b)=>b.score-a.score);
+  const winner = ranked[0];
+  m.innerHTML = `
+    <div class="modal-box">
+      <div class="trophy">🏆</div>
+      <h2>${winner.emoji} ${escapeHtml(winner.name)} מנצח!</h2>
+      <div class="winner-score">${fmt(winner.score)} נקודות</div>
+      <div class="final-scores">
+        ${ranked.map((p,i)=>`
+          <div class="${i===0?'first':''}"><span>${p.emoji} ${escapeHtml(p.name)}</span><span>${fmt(p.score)}</span></div>`).join('')}
+      </div>
+      <button class="btn-primary" data-action="newGame">🔄 משחק חדש</button>
+    </div>`;
+  m.hidden = false;
+}
+
+/* ==================== PERSISTENCE ==================== */
+const STORAGE_KEY = 'otzarot-state-v1';
+function persist(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({state, entry})); }catch(e){}
+}
+function loadPersisted(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const d = JSON.parse(raw);
+    if(d.state && d.state.players && d.state.players.length){ state = d.state; entry = Object.assign(defaultEntry(), d.entry||{}); return true; }
+  }catch(e){}
+  return false;
+}
+
+/* ==================== ACTIONS ==================== */
+function playerById(id){ return state.players.find(p=>p.id===id); }
+
+function handleStep(target, delta){
+  let cur, next;
+  if(target.startsWith('counts.')){
+    const k = target.split('.')[1];
+    cur = entry.counts[k];
+    const others = sum(entry.counts) - cur;
+    next = clamp(cur+delta, 0, Math.min(8, 8-others));
+    entry.counts[k] = next;
+  }else if(target.startsWith('protected.')){
+    const k = target.split('.')[1];
+    cur = entry.protected[k];
+    next = clamp(cur+delta, 0, entry.counts[k]);
+    entry.protected[k] = next;
+  }else if(target==='naval.req'){ entry.naval.req = clamp(entry.naval.req+delta,1,8); }
+  else if(target==='naval.bonus'){ entry.naval.bonus = clamp(entry.naval.bonus+delta,0,20000); }
+  else if(target==='naval.pen'){ entry.naval.pen = clamp(entry.naval.pen+delta,0,20000); }
+  else if(target==='skullStart'){ entry.skullStart = clamp(entry.skullStart+delta,0,3); }
+  else if(target==='override.value'){ entry.override.value += delta; }
+  renderTurnPanel();
+}
+
+function saveTurn(){
+  if(state.done) return;
+  const p = state.players[state.turnIdx];
+  const res = computeEntry(entry);
+  past.push(JSON.parse(JSON.stringify({state, entry})));
+
+  let score, lines, applied = [];
+  if(entry.override.on){
+    score = entry.override.value;
+    lines = ['✏️ ניקוד הוזן ידנית'];
+  }else{
+    score = res.score;
+    lines = res.lines.slice();
+    if(res.type==='isle'){
+      const skullVal = res.skullVal;
+      state.players.forEach(o => {
+        if(o.id !== p.id){
+          o.score -= res.deduction;
+          applied.push(`${o.emoji} ${o.name}: ${fmt(-res.deduction)}`);
+        }
+      });
+      lines.push(`☠️ ${res.deduction/skullVal} גולגלות × ${skullVal} הופחתו מכל יריב`);
+    }
+  }
+
+  p.score += score;
+  state.history.push({
+    playerId:p.id, cardId:entry.cardId, counts:{...entry.counts},
+    score, lines, applied,
+  });
+
+  const sc = $('#scoreboard').querySelector(`[data-player="${p.id}"]`);
+  if(sc){ const el = sc.querySelector('.p-score'); el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),600); }
+
+  if(!state.finisher && !entry.override.on && score > 0 && p.score >= 8000){
+    state.finisher = p.id;
+    state.lastRoundPending = state.players.filter(x=>x.id!==p.id).map(x=>x.id);
+  }else if(state.finisher != null && state.lastRoundPending.includes(p.id)){
+    state.lastRoundPending = state.lastRoundPending.filter(id=>id!==p.id);
+  }
+
+  advance();
+  entry = defaultEntry();
+  persist();
+  render();
+  if(state.done) showWinner();
+}
+
+function advance(){
+  const n = state.players.length;
+  let next = (state.turnIdx+1) % n;
+  if(state.finisher != null){
+    while(state.players[next].id === state.finisher) next = (next+1) % n;
+  }
+  if(next === 0) state.round++;
+  state.turnIdx = next;
+  if(state.finisher != null && state.lastRoundPending.length === 0) state.done = true;
+}
+
+function undo(){
+  if(!past.length) return;
+  const snap = past.pop();
+  state = snap.state;
+  entry = snap.entry;
+  persist();
+  render();
+}
+
+function newGame(){
+  if(state.history.length && !confirm('להתחיל משחק חדש? כל הניקוד יימחק.')) return;
+  state = {screen:'setup', players:[], turnIdx:0, round:1, finisher:null, lastRoundPending:[], done:false, history:[]};
+  entry = defaultEntry();
+  past = [];
+  localStorage.removeItem(STORAGE_KEY);
+  makePlayers(2);
+  $('#modal').hidden = true;
+  render();
+}
+
+/* ==================== SETUP HELPERS ==================== */
+function makePlayers(n){
+  state.players = Array.from({length:n}, (_,i) => ({
+    id: uid(),
+    name: `שחקן ${i+1}`,
+    emoji: AVATARS[i % AVATARS.length],
+    color: COLORS[i % COLORS.length],
+    score: 0,
+  }));
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+/* ==================== EVENTS ==================== */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const a = el.dataset.action;
+
+  if(a==='setPlayers'){
+    const delta = parseInt(el.dataset.delta,10);
+    const n = clamp(state.players.length + delta, 2, 8);
+    if(n !== state.players.length){ makePlayers(n); renderSetup(); }
+  }
+  else if(a==='cycleAvatar'){
+    const p = playerById(el.dataset.id);
+    p.emoji = AVATARS[(AVATARS.indexOf(p.emoji)+1) % AVATARS.length];
+    renderSetup();
+  }
+  else if(a==='startGame'){
+    state.screen = 'game';
+    state.turnIdx = 0;
+    state.round = 1;
+    render();
+  }
+  else if(a==='pickCard'){
+    entry.cardId = el.dataset.card;
+    if(entry.cardId==='naval') entry.isle = false;
+    renderTurnPanel();
+  }
+  else if(a==='step'){
+    handleStep(el.dataset.target, parseInt(el.dataset.delta,10));
+  }
+  else if(a==='toggleIsle'){
+    entry.isle = el.checked;
+    renderTurnPanel();
+  }
+  else if(a==='toggleOverride'){
+    entry.override.on = el.checked;
+    renderTurnPanel();
+  }
+  else if(a==='saveTurn'){ saveTurn(); }
+  else if(a==='undo'){ undo(); }
+  else if(a==='newGame'){ newGame(); }
+  else if(a==='rulesToggle'){
+    const r = document.createElement('details');
+    r.className='rules';
+    r.innerHTML = `
+      <summary>📜 חוקי ניקוד</summary>
+      <div class="rules-body">
+        <h4>סדרות (3+ עצמים זהים)</h4>
+        <table><tr><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+        <tr><td>100</td><td>200</td><td>500</td><td>1,000</td><td>2,000</td><td>4,000</td></tr></table>
+        <h4>כללים</h4>
+        <div>🪙💎 כל יהלום ומטבע זהב = 100, בנוסף לסדרה.<br>
+        🧰 תיבה מלאה (8/8) = +500.<br>
+        💀 3+ גולגלות = פסילה. 4+ בהטלה הראשונה = 🏝️ אי המתים.<br>
+        🏁 ניצחון: לחצות 8,000 ואז כולם מקבלים תור אחרון.</div>
+      </div>`;
+    r.open = true;
+    const panel = $('#turnPanel');
+    if(panel) panel.after(r);
+    setTimeout(()=>{ r.scrollIntoView({behavior:'smooth', block:'nearest'}); },50);
+  }
+});
+
+document.addEventListener('change', e => {
+  const ni = e.target.getAttribute && e.target.getAttribute('data-name-input');
+  if(ni){
+    const p = playerById(ni);
+    if(p) p.name = e.target.value.trim() || p.name;
+    persist();
+  }
+});
+
+/* ==================== INIT ==================== */
+function render(){
+  const setup = $('#setup'), game = $('#game');
+  if(state.screen==='setup'){
+    setup.hidden = false; game.hidden = true;
+    renderSetup();
+  }else{
+    setup.hidden = true; game.hidden = false;
+    renderGame();
+  }
+}
+
+if(!loadPersisted()){
+  makePlayers(2);
+  state.screen='setup';
+}
+render();
+</script>
+</body>
+</html>
